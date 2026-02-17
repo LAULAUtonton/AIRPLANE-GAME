@@ -1,1 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sky Network - Strategy Game</title>
+
+<style>
+body{
+margin:0;
+background:#0f172a;
+color:white;
+font-family:Arial, sans-serif;
+overflow:hidden;
+}
+
+#ui{
+position:absolute;
+top:10px;
+left:10px;
+z-index:10;
+background:rgba(0,0,0,0.5);
+padding:10px;
+border-radius:10px;
+}
+
+button{
+padding:8px 12px;
+margin-top:5px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+font-weight:bold;
+}
+
+canvas{
+display:block;
+}
+
+.stat{
+margin:4px 0;
+}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+<div class="stat">💰 Money: $<span id="money">100</span></div>
+<div class="stat">👥 Total Passengers: <span id="score">0</span></div>
+<div class="stat">⚠ Overloaded Cities: <span id="overload">0</span></div>
+<button onclick="pauseGame()">Pause</button>
+<button onclick="resetGame()">Reset</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let cities = [];
+let routes = [];
+let money = 100;
+let score = 0;
+let difficulty = 1;
+let paused = false;
+
+class City{
+constructor(x,y){
+this.x = x;
+this.y = y;
+this.radius = 20;
+this.passengers = 0;
+this.capacity = 10;
+this.growthRate = Math.random()*0.05 + 0.02;
+}
+update(){
+this.passengers += this.growthRate * difficulty;
+}
+draw(){
+ctx.beginPath();
+ctx.arc(this.x,this.y,this.radius,0,Math.PI*2);
+ctx.fillStyle = this.passengers > this.capacity ? "red" : "cyan";
+ctx.fill();
+ctx.fillStyle="white";
+ctx.font="12px Arial";
+ctx.fillText(Math.floor(this.passengers),this.x-10,this.y+4);
+}
+}
+
+class Route{
+constructor(a,b){
+this.a = a;
+this.b = b;
+}
+update(){
+let transfer = Math.min(this.a.passengers,this.b.passengers) * 0.02;
+this.a.passengers -= transfer;
+this.b.passengers -= transfer;
+money += transfer * 0.5;
+score += transfer;
+}
+draw(){
+ctx.beginPath();
+ctx.moveTo(this.a.x,this.a.y);
+ctx.lineTo(this.b.x,this.b.y);
+ctx.strokeStyle="white";
+ctx.lineWidth=2;
+ctx.stroke();
+}
+}
+
+function createCity(){
+let margin=100;
+cities.push(new City(
+Math.random()*(canvas.width-margin*2)+margin,
+Math.random()*(canvas.height-margin*2)+margin
+));
+}
+
+for(let i=0;i<6;i++) createCity();
+
+let selectedCity=null;
+
+canvas.addEventListener("click",e=>{
+let mx=e.clientX;
+let my=e.clientY;
+for(let city of cities){
+let dx=mx-city.x;
+let dy=my-city.y;
+if(Math.sqrt(dx*dx+dy*dy)<city.radius){
+if(!selectedCity){
+selectedCity=city;
+}else if(selectedCity!==city){
+if(money>=20){
+routes.push(new Route(selectedCity,city));
+money-=20;
+}
+selectedCity=null;
+}
+}
+}
+});
+
+function update(){
+if(paused) return;
+
+difficulty += 0.0002;
+
+cities.forEach(c=>c.update());
+routes.forEach(r=>r.update());
+
+let overloaded = cities.filter(c=>c.passengers>c.capacity).length;
+
+if(overloaded>=3){
+alert("GAME OVER");
+resetGame();
+}
+
+document.getElementById("money").innerText=Math.floor(money);
+document.getElementById("score").innerText=Math.floor(score);
+document.getElementById("overload").innerText=overloaded;
+}
+
+function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+routes.forEach(r=>r.draw());
+cities.forEach(c=>c.draw());
+
+if(selectedCity){
+ctx.beginPath();
+ctx.arc(selectedCity.x,selectedCity.y,selectedCity.radius+5,0,Math.PI*2);
+ctx.strokeStyle="yellow";
+ctx.stroke();
+}
+}
+
+function loop(){
+update();
+draw();
+requestAnimationFrame(loop);
+}
+
+function pauseGame(){
+paused=!paused;
+}
+
+function resetGame(){
+cities=[];
+routes=[];
+money=100;
+score=0;
+difficulty=1;
+for(let i=0;i<6;i++) createCity();
+}
+
+loop();
+
+</script>
+
+</body>
+</html>
 
